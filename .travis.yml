@@ -8,12 +8,10 @@ language: go
 # LINTER_VERSION is the version of golangci-lint. See current releases
 # here:
 #   https://github.com/golangci/golangci-lint/releases
-env: GO111MODULE=on GOFLAGS='-mod vendor'
+env: GO111MODULE=on
 
-# You don't need to test on very old versions of the Go compiler. It's the user's
-# responsibility to keep their compiler up to date.
 go:
-  - 1.13.x
+  - 1.13
 
 # Only clone the most recent commit.
 git:
@@ -37,4 +35,4 @@ before_script:
 # .golangci.yml file at the top level of your repo.
 script:
   - golangci-lint run       # run a bunch of code checkers/linters in parallel
-  - go test -v
+  - go test -v -cover

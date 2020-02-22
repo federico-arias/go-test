@@ -12,8 +12,13 @@ type TLVReader struct {
 	err    error
 	t      string
 	l      int64
-	v      string
+	isAlfa bool
 }
+
+var (
+	ErrTipoInvalido = errors.New("tipo inválido: no cumple largo")
+	//ErrTipoDesconocido = errors.New("tipo inválido: solo se acepta A o N")
+)
 
 // Prepara el escaneo del valor del TLV
 // Asume que estarán dentro de los valores ASCII.
@@ -24,7 +29,7 @@ func (r *TLVReader) Next() bool {
 	}
 	// Verifica que queden bytes suficientes
 	if r.reader.Len() < 5 {
-		r.err = errors.New("no se puede obtener el tipo y largo")
+		r.err = ErrTipoInvalido
 		return false
 	}
 	// Lee el largo
@@ -40,13 +45,28 @@ func (r *TLVReader) Next() bool {
 		return false
 	}
 	// Lee el tipo
-	tipo := make([]byte, 3)
-	_, err = r.reader.Read(tipo)
+	tipo0 := make([]byte, 1)
+	_, err = r.reader.Read(tipo0)
 	if err != nil {
 		r.err = err
 		return false
 	}
-	r.t = string(tipo)
+	// Lee si es alfanumérico
+	alfa, err := checkAlfa(tipo0)
+	if err != nil {
+		r.err = err
+		return false
+	}
+	r.isAlfa = alfa
+
+	tipo1 := make([]byte, 2)
+	_, err = r.reader.Read(tipo1)
+	if err != nil {
+		r.err = err
+		return false
+	}
+	r.t = string(tipo1)
+	// Guarda el tipo como alfanumérico
 	return true
 }
 
@@ -61,12 +81,13 @@ func (r *TLVReader) Scan(m map[string]string) (err error) {
 		ch, _, err = r.reader.ReadRune()
 		if err == io.EOF {
 			r.err = errors.New("segmento valor de largo insuficiente")
+			return r.err
 		}
 		if err != nil {
 			return err
 		}
+		m[r.t] = m[r.t] + string(ch)
 	}
-	m[r.t] = m[r.t] + string(ch)
 	return nil
 }
 
@@ -91,4 +112,15 @@ func ParseTLV(tlv []byte) (map[string]string, error) {
 	}
 	return ret, nil
 
+}
+
+func checkAlfa(b []byte) (bool, error) {
+	switch string(b) {
+	case "A":
+		return true, nil
+	case "N":
+		return false, nil
+	default:
+		return false, errors.New("tipo inválido")
+	}
 }
