@@ -1,4 +1,4 @@
-[![Travis CI](https://travis-ci.org/federico-arias/go-test.svg?branch=master)
+[![Travis CI](https://travis-ci.org/federico-arias/go-test.svg?branch=master)](https://travis-ci.org/federico-arias/go-test)
 
 ## Instalación
 
