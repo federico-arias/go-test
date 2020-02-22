@@ -1,4 +1,4 @@
-package main
+package tlv
 
 import (
 	"bytes"
@@ -16,12 +16,14 @@ type TLVReader struct {
 }
 
 var (
-	ErrTipoInvalido = errors.New("tipo inválido: no cumple largo")
-	//ErrTipoDesconocido = errors.New("tipo inválido: solo se acepta A o N")
+	ErrTipoInvalido    = errors.New("tipo inválido: no cumple largo")
+	ErrTipoDesconocido = errors.New("tipo inválido: solo se acepta A o N")
+	ErrValorInvalido   = errors.New("valor no concuerda con tipo")
+	ErrCadenaVacia     = errors.New("cadena vacía")
 )
 
 // Prepara el escaneo del valor del TLV
-// Asume que estarán dentro de los valores ASCII.
+// Asume que 1 octeto == 1 codepoint.
 func (r *TLVReader) Next() bool {
 	// Verifica EOF
 	if r.reader.Len() < 1 {
@@ -66,7 +68,6 @@ func (r *TLVReader) Next() bool {
 		return false
 	}
 	r.t = string(tipo1)
-	// Guarda el tipo como alfanumérico
 	return true
 }
 
@@ -74,7 +75,9 @@ func (r *TLVReader) Next() bool {
 // equivalencia entre 1 octeto == 1 caracter, detecta
 // esta discrepancia y modifica las runas a leer.
 //
-// Asume codificación UTF-8.
+// Asume codificación UTF-8 y reconoce la ambigüedad
+// del concepto 'alfanumérico' que puede incluir símbolos y
+// puntuaciones.
 func (r *TLVReader) Scan(m map[string]string) (err error) {
 	var ch rune
 	for i := 0; i < int(r.l); i++ {
@@ -88,6 +91,13 @@ func (r *TLVReader) Scan(m map[string]string) (err error) {
 		}
 		m[r.t] = m[r.t] + string(ch)
 	}
+	if !r.isAlfa {
+		_, err = strconv.ParseInt(string(m[r.t]), 10, 0)
+		if err != nil {
+			return ErrValorInvalido
+		}
+
+	}
 	return nil
 }
 
@@ -96,6 +106,9 @@ func (r *TLVReader) Err() error {
 }
 
 func ParseTLV(tlv []byte) (map[string]string, error) {
+	if len(tlv) == 0 {
+		return nil, ErrCadenaVacia
+	}
 	ret := make(map[string]string)
 	r := &TLVReader{}
 	r.reader = bytes.NewReader(tlv)
@@ -121,6 +134,6 @@ func checkAlfa(b []byte) (bool, error) {
 	case "N":
 		return false, nil
 	default:
-		return false, errors.New("tipo inválido")
+		return false, ErrTipoDesconocido
 	}
 }

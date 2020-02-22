@@ -1,4 +1,4 @@
-package main
+package tlv
 
 import (
 	"fmt"
@@ -11,35 +11,57 @@ var flagtests = []struct {
 	in   []byte
 	out  map[string]string
 	desc string
+	err  error
 }{
 	{
 		[]byte("11A05AB398765UJ102N2300"),
 		map[string]string{"05": "AB398765UJ1", "23": "00"},
-		"cadena bien formada",
+		"lee una cadena bien formada",
+		nil,
 	},
 	{
 		[]byte("11A05A😀398765UJ102N2300"),
 		map[string]string{"05": "A😀398765UJ1", "23": "00"},
-		"cadena bien formada con un codepoint mayor a un octeto",
+		`lee una cadena bien formada con un codepoint mayor
+		a un octeto`,
+		nil,
 	},
-	/*{
-		[]byte("11A05AB398765UJ102N230"),
+	{
+		[]byte("11C05AB398765UJ102N2300"),
 		map[string]string{"05": "AB398765UJ1", "23": "00"},
-		"cadena mal formada",
+		"reconce error de tipo de valor",
+		ErrTipoDesconocido,
 	},
-	*/
+	{
+		[]byte(""),
+		nil,
+		"reconocer error de campo vacío",
+		ErrCadenaVacia,
+	},
+	{
+		[]byte("11A05AB398765UJ102N"),
+		nil,
+		"reconce error de cadena no terminada",
+		ErrTipoInvalido,
+	},
+	{
+		[]byte("11N05A😀398765UJ102N2300"),
+		nil,
+		`reconce error de concordancia tipo/valor`,
+		ErrValorInvalido,
+	},
 }
 
 func TestMain(m *testing.M) {
-	// call flag.Parse() here if TestMain uses flags
 	rc := m.Run()
 
-	// rc 0 means we've passed,
-	// and CoverMode will be non empty if run with -cover
 	if rc == 0 && testing.CoverMode() != "" {
 		c := testing.Coverage()
 		if c < 0.8 {
-			fmt.Println("Tests passed but coverage failed at", c)
+			fmt.Println(
+				"Los test pasan pero falla el coverage en",
+				c,
+			)
 			rc = -1
 		}
 	}
@@ -50,11 +72,20 @@ func TestParseTLV(t *testing.T) {
 	for _, ta := range flagtests {
 		r, err := ParseTLV(ta.in)
 		t.Logf(ta.desc)
-		if err != nil {
+		if err != nil && ta.err == nil {
 			t.Errorf("error: %s", err.Error())
 		}
-		if !reflect.DeepEqual(r, ta.out) {
-			t.Errorf("recieved %#v, expected %#v", r, ta.out)
+		if err != ta.err {
+			t.Errorf(
+				"ParseTLV(%s) = _, %#v \n, expected %#v",
+				ta.in,
+				err,
+				ta.err,
+			)
+			continue
+		}
+		if ta.err == nil && !reflect.DeepEqual(r, ta.out) {
+			t.Errorf("ParseTLV(%s) = %#v, expected %#v", ta.in, r, ta.out)
 		}
 	}
 }
