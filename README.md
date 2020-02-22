@@ -1,3 +1,5 @@
+[![Travis CI](https://travis-ci.org/federico-arias/go-test.svg?branch=master)
+
 ## Instalación
 
 Con Go modules:
